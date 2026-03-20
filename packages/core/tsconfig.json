@@ -1,0 +1,28 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "lib": ["DOM", "DOM.Iterable", "ES2023"],
+    "composite": false,
+    "types": ["node"],
+    "skipLibCheck": true,
+    "noEmit": false
+  },
+  "include": [
+    "index.ts",
+    "src/index.ts",
+    "src/**/*.ts",
+    "src/**/*.json"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/__mocks__/**",
+    "src/**/mocks/**",
+    "src/**/test-utils/**",
+    "src/telemetry/**/*.test.circular.ts",
+    "src/test-utils/**"
+  ]
+}
