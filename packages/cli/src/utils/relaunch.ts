@@ -5,6 +5,7 @@
  */
 
 import { spawn } from 'node:child_process';
+import * as fs from 'node:fs';
 import { RELAUNCH_EXIT_CODE } from './processUtils.js';
 import { writeStderrLine } from './stdioHelpers.js';
 
@@ -52,15 +53,24 @@ export async function relaunchAppInChildProcess(
     process.stdin.pause();
 
     // Build stdio array to pass through additional file descriptors
-    // Start with stdin, stdout, stderr, then add any additional FDs (3, 4, 5, ...)
+    // Start with stdin, stdout, stderr, then add any additional FDs that are open
     const stdio: Array<'inherit' | 'pipe' | 'ignore' | number> = [
       'inherit', // stdin (0)
       'inherit', // stdout (1)
       'inherit', // stderr (2)
     ];
-    // Add additional FDs (3, 4, 5, ...) - these will be inherited from parent
+    
+    // Only pass through FDs 3-10 if they appear to be open
+    // We check by trying to get FD info - if it throws, the FD is not open
     for (let fd = 3; fd <= 10; fd++) {
-      stdio.push(fd);
+      try {
+        // Try to fstat the FD - if it works, the FD is open
+        fs.fstatSync(fd);
+        stdio.push(fd);
+      } catch {
+        // FD is not open, use 'ignore' as placeholder
+        stdio.push('ignore');
+      }
     }
 
     const child = spawn(process.execPath, nodeArgs, {

@@ -76,12 +76,19 @@ writeFileSync(registerPath, registerCode);
 const existingNodeOptions = process.env.NODE_OPTIONS || '';
 const importFlag = `--import ${pathToFileURL(registerPath).href}`;
 
+// Check if custom FDs are being used - if so, disable relaunch to prevent EBADF errors
+const hasCustomFds = process.argv.some(arg => 
+  arg === '--input-fd' || arg === '--output-fd' || arg === '--error-fd'
+);
+
 const env = {
   ...process.env,
   DEV: 'true',
   CLI_VERSION: 'dev',
   NODE_ENV: 'development',
   NODE_OPTIONS: `${existingNodeOptions} ${importFlag}`.trim(),
+  // Disable relaunch when using custom FDs to prevent EBADF errors
+  ...(hasCustomFds ? { QWEN_CODE_NO_RELAUNCH: 'true' } : {}),
 };
 
 // On Windows, use tsx.cmd; on Unix, use tsx directly

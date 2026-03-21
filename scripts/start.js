@@ -58,17 +58,18 @@ if (process.env.DEBUG && !sandboxCommand) {
 nodeArgs.push(join(root, 'packages', 'cli'));
 nodeArgs.push(...process.argv.slice(2));
 
+// Check if custom FDs are being used - if so, disable relaunch to prevent EBADF errors
+const hasCustomFds = process.argv.some(arg =>
+  arg === '--input-fd' || arg === '--output-fd' || arg === '--error-fd'
+);
+
 const env = {
   ...process.env,
   CLI_VERSION: pkg.version,
   DEV: 'true',
+  // Disable relaunch when using custom FDs or in debug mode to prevent EBADF errors
+  ...(hasCustomFds || process.env.DEBUG ? { QWEN_CODE_NO_RELAUNCH: 'true' } : {}),
 };
-
-if (process.env.DEBUG) {
-  // If this is not set, the debugger will pause on the outer process rather
-  // than the relaunched process making it harder to debug.
-  env.QWEN_CODE_NO_RELAUNCH = 'true';
-}
 // Use process.cwd() to inherit the working directory from launch.json cwd setting
 // This allows debugging from a specific directory (e.g., .todo)
 const workingDir = process.env.QWEN_WORKING_DIR || process.cwd();

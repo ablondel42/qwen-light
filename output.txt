@@ -1,0 +1,7 @@
+
+> @qwen-code/qwen-code@0.13.0 dev
+> node scripts/dev.js --prompt hello
+
+Hello Arnaud! 👋 
+
+How can I help you today?

@@ -157,17 +157,8 @@ export class FileDescriptorService {
     } else {
       // Use synchronous write for custom FDs to ensure data is flushed
       try {
-        const bytes = fs.writeSync(this.outputFd, data);
-        console.error(`[FDService.writeOutput] Wrote ${bytes} bytes to FD ${this.outputFd}`);
-        // Force sync to ensure data is flushed to disk
-        try {
-          fs.fsyncSync(this.outputFd);
-          console.error(`[FDService.writeOutput] fsync successful`);
-        } catch (fsyncErr) {
-          console.error(`[FDService.writeOutput] fsync failed: ${fsyncErr.message}`);
-        }
+        fs.writeSync(this.outputFd, data);
       } catch (error) {
-        console.error(`[FDService.writeOutput] Error: ${error.message}`);
         // Fallback to stdout if custom FD write fails
         process.stdout.write(data);
       }

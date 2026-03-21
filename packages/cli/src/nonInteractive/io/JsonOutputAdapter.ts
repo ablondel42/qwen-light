@@ -63,30 +63,24 @@ export class JsonOutputAdapter
   }
 
   emitResult(options: ResultOptions): void {
-    console.error('[JsonOutputAdapter.emitResult] Called');
     const resultMessage = this.buildResultMessage(
       options,
       this.lastAssistantMessage,
     );
     this.messages.push(resultMessage);
-    console.error(`[JsonOutputAdapter.emitResult] resultMessage.is_error=${resultMessage.is_error}, result="${resultMessage.result?.substring(0, 100)}..."`);
 
     if (this.config.getOutputFormat() === 'text') {
       const output = resultMessage.is_error
         ? `${resultMessage.error?.message || ''}`
         : `${resultMessage.result}`;
-      console.error(`[JsonOutputAdapter.emitResult] Writing output: "${output.substring(0, 100)}..."`);
-      console.error(`[JsonOutputAdapter.emitResult] FD service initialized: ${isFileDescriptorServiceInitialized()}`);
 
       if (isFileDescriptorServiceInitialized()) {
         const fdService = getFileDescriptorService();
-        console.error(`[JsonOutputAdapter.emitResult] FD service outputFd=${fdService.getOutputFd()}`);
         if (resultMessage.is_error) {
           fdService.writeError(output);
         } else {
           fdService.writeOutput(output);
         }
-        console.error('[JsonOutputAdapter.emitResult] writeOutput called');
       } else {
         if (resultMessage.is_error) {
           process.stderr.write(output);

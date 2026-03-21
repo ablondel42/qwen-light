@@ -115,11 +115,9 @@ export async function runNonInteractive(
   options: RunNonInteractiveOptions = {},
 ): Promise<void> {
   return promptIdContext.run(prompt_id, async () => {
-    console.error(`[runNonInteractive] Starting with input="${input.substring(0, 50)}..."`);
     // Create output adapter based on format
     let adapter: JsonOutputAdapterInterface;
     const outputFormat = config.getOutputFormat();
-    console.error(`[runNonInteractive] outputFormat=${outputFormat}`);
 
     if (options.adapter) {
       adapter = options.adapter;
@@ -131,7 +129,6 @@ export async function runNonInteractive(
     } else {
       adapter = new JsonOutputAdapter(config);
     }
-    console.error(`[runNonInteractive] Adapter created`);
 
     // Get readonly values once at the start
     const sessionId = config.getSessionId();
@@ -158,39 +155,32 @@ export async function runNonInteractive(
     };
 
     try {
-      console.error('[runNonInteractive] Entering try block');
       process.stdout.on('error', stdoutErrorHandler);
 
       process.on('SIGINT', shutdownHandler);
       process.on('SIGTERM', shutdownHandler);
 
       // Emit systemMessage first (always the first message in JSON mode)
-      console.error('[runNonInteractive] Building system message...');
       const systemMessage = await buildSystemMessage(
         config,
         sessionId,
         permissionMode,
       );
-      console.error('[runNonInteractive] System message built, emitting...');
       adapter.emitMessage(systemMessage);
-      console.error('[runNonInteractive] System message emitted');
 
       let initialPartList: PartListUnion | null = extractPartsFromUserMessage(
         options.userMessage,
       );
-      console.error(`[runNonInteractive] initialPartList=${initialPartList}, isSlashCommand=${isSlashCommand(input)}`);
 
       if (!initialPartList) {
         let slashHandled = false;
         if (isSlashCommand(input)) {
-          console.error('[runNonInteractive] Handling slash command...');
           const slashCommandResult = await handleSlashCommand(
             input,
             abortController,
             config,
             settings,
           );
-          console.error(`[runNonInteractive] Slash command result: ${slashCommandResult.type}`);
           switch (slashCommandResult.type) {
             case 'submit_prompt':
               // A slash command can replace the prompt entirely; fall back to @-command processing otherwise.
@@ -234,7 +224,6 @@ export async function runNonInteractive(
         }
 
         if (!slashHandled) {
-          console.error('[runNonInteractive] Handling @ command...');
           const { processedQuery, shouldProceed } = await handleAtCommand({
             query: input,
             config,
@@ -242,12 +231,10 @@ export async function runNonInteractive(
             messageId: Date.now(),
             signal: abortController.signal,
           });
-          console.error(`[runNonInteractive] @ command result: shouldProceed=${shouldProceed}, processedQuery=${processedQuery ? 'yes' : 'no'}`);
 
           if (!shouldProceed || !processedQuery) {
             // An error occurred during @include processing (e.g., file not found).
             // The error message is already logged by handleAtCommand.
-            console.error('[runNonInteractive] Throwing FatalInputError...');
             throw new FatalInputError(
               'Exiting due to an error processing the @ command.',
             );
@@ -257,30 +244,24 @@ export async function runNonInteractive(
       }
 
       if (!initialPartList) {
-        console.error('[runNonInteractive] Setting initialPartList from input text');
         initialPartList = [{ text: input }];
       }
-      console.error('[runNonInteractive] Normalizing parts...');
 
       const initialParts = normalizePartList(initialPartList);
       let currentMessages: Content[] = [{ role: 'user', parts: initialParts }];
 
       let isFirstTurn = true;
-      console.error('[runNonInteractive] Starting main loop...');
       while (true) {
         turnCount++;
-        console.error(`[runNonInteractive] Turn ${turnCount} starting`);
         if (
           config.getMaxSessionTurns() >= 0 &&
           turnCount > config.getMaxSessionTurns()
         ) {
-          console.error('[runNonInteractive] Max turns exceeded');
           handleMaxTurnsExceededError(config);
         }
 
         const toolCallRequests: ToolCallRequestInfo[] = [];
         const apiStartTime = Date.now();
-        console.error('[runNonInteractive] Calling sendMessageStream...');
         const responseStream = geminiClient.sendMessageStream(
           currentMessages[0]?.parts || [],
           abortController.signal,
@@ -291,16 +272,13 @@ export async function runNonInteractive(
               : SendMessageType.ToolResult,
           },
         );
-        console.error('[runNonInteractive] sendMessageStream returned, iterating...');
         isFirstTurn = false;
 
         // Start assistant message for this turn
         adapter.startAssistantMessage();
 
         for await (const event of responseStream) {
-          console.error(`[runNonInteractive] Received event: ${event.type}`);
           if (abortController.signal.aborted) {
-            console.error('[runNonInteractive] Aborted');
             handleCancellationError(config);
           }
           // Use adapter for all event processing
@@ -321,11 +299,9 @@ export async function runNonInteractive(
             throw new Error(errorText);
           }
         }
-        console.error('[runNonInteractive] Event loop completed');
 
         // Finalize assistant message
         adapter.finalizeAssistantMessage();
-        console.error('[runNonInteractive] Assistant message finalized');
         totalApiDurationMs += Date.now() - apiStartTime;
 
         if (toolCallRequests.length > 0) {
@@ -395,7 +371,6 @@ export async function runNonInteractive(
           }
           currentMessages = [{ role: 'user', parts: toolResponseParts }];
         } else {
-          console.error('[runNonInteractive] No tool calls, emitting result...');
           const metrics = uiTelemetryService.getMetrics();
           const usage = computeUsageFromMetrics(metrics);
           // Get stats for JSON format output
@@ -403,7 +378,6 @@ export async function runNonInteractive(
             outputFormat === OutputFormat.JSON
               ? uiTelemetryService.getMetrics()
               : undefined;
-          console.error('[runNonInteractive] Calling adapter.emitResult()...');
           adapter.emitResult({
             isError: false,
             durationMs: Date.now() - startTime,
@@ -412,7 +386,6 @@ export async function runNonInteractive(
             usage,
             stats,
           });
-          console.error('[runNonInteractive] Result emitted, returning...');
           return;
         }
       }
