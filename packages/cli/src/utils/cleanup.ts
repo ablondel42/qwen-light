@@ -6,7 +6,9 @@
 
 import { promises as fs } from 'node:fs';
 import { join } from 'node:path';
-import { Storage } from '@qwen-code/qwen-code-core';
+import { Storage, createDebugLogger } from '@qwen-code/qwen-code-core';
+
+const debugLogger = createDebugLogger('CLEANUP');
 
 const cleanupFunctions: Array<(() => void) | (() => Promise<void>)> = [];
 
@@ -18,8 +20,10 @@ export async function runExitCleanup() {
   for (const fn of cleanupFunctions) {
     try {
       await fn();
-    } catch (_) {
-      // Ignore errors during cleanup.
+    } catch (error) {
+      // Log cleanup failures without exposing sensitive details
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      debugLogger.warn(`Cleanup function failed: ${errorMsg}`);
     }
   }
   cleanupFunctions.length = 0; // Clear the array

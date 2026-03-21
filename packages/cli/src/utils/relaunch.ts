@@ -59,16 +59,36 @@ export async function relaunchAppInChildProcess(
       'inherit', // stdout (1)
       'inherit', // stderr (2)
     ];
-    
-    // Only pass through FDs 3-10 if they appear to be open
-    // We check by trying to get FD info - if it throws, the FD is not open
-    for (let fd = 3; fd <= 10; fd++) {
-      try {
-        // Try to fstat the FD - if it works, the FD is open
-        fs.fstatSync(fd);
-        stdio.push(fd);
-      } catch {
-        // FD is not open, use 'ignore' as placeholder
+
+    // Extract custom FDs from CLI arguments instead of probing
+    // This ensures we only inherit explicitly requested FDs
+    const customFds = new Set<number>();
+    const fdArgNames = ['--input-fd', '--output-fd', '--error-fd'];
+    for (let i = 0; i < process.argv.length; i++) {
+      const arg = process.argv[i];
+      if (fdArgNames.includes(arg) && i + 1 < process.argv.length) {
+        const fd = parseInt(process.argv[i + 1], 10);
+        // Validate FD is in valid range (3-1024)
+        if (Number.isInteger(fd) && fd >= 3 && fd <= 1024) {
+          customFds.add(fd);
+        }
+      }
+    }
+
+    // Inherit only explicitly requested custom FDs
+    // Check up to FD 1024 (typical per-process FD limit start)
+    for (let fd = 3; fd <= 1024; fd++) {
+      if (customFds.has(fd)) {
+        try {
+          // Verify FD is actually open before inheriting
+          fs.fstatSync(fd);
+          stdio.push(fd);
+        } catch {
+          // FD was requested but not open, use 'ignore'
+          stdio.push('ignore');
+        }
+      } else {
+        // FD not requested, use 'ignore'
         stdio.push('ignore');
       }
     }

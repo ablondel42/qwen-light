@@ -2245,6 +2245,149 @@ describe('Output format', () => {
   });
 });
 
+describe('parseArguments FD validation (Major Issue #8)', () => {
+  const originalArgv = process.argv;
+
+  afterEach(() => {
+    process.argv = originalArgv;
+  });
+
+  it('should accept valid FD arguments', async () => {
+    process.argv = [
+      'node',
+      'script.js',
+      '--input-fd',
+      '3',
+      '--output-fd',
+      '4',
+      '--error-fd',
+      '5',
+    ];
+    const argv = await parseArguments();
+    expect(argv.inputFd).toBe(3);
+    expect(argv.outputFd).toBe(4);
+    expect(argv.errorFd).toBe(5);
+  });
+
+  it('should accept FD at boundary value 0', async () => {
+    process.argv = ['node', 'script.js', '--input-fd', '0'];
+    const argv = await parseArguments();
+    expect(argv.inputFd).toBe(0);
+  });
+
+  it('should accept FD at boundary value 1024', async () => {
+    process.argv = ['node', 'script.js', '--input-fd', '1024'];
+    const argv = await parseArguments();
+    expect(argv.inputFd).toBe(1024);
+  });
+
+  it('should reject negative FD values', async () => {
+    process.argv = ['node', 'script.js', '--input-fd', '-1'];
+    const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('process.exit called');
+    });
+    mockWriteStderrLine.mockClear();
+    await expect(parseArguments()).rejects.toThrow('process.exit called');
+    expect(mockWriteStderrLine).toHaveBeenCalledWith(
+      expect.stringContaining('Invalid --input-fd'),
+    );
+    mockExit.mockRestore();
+  });
+
+  it('should reject FD values over 1024', async () => {
+    process.argv = ['node', 'script.js', '--input-fd', '1025'];
+    const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('process.exit called');
+    });
+    mockWriteStderrLine.mockClear();
+    await expect(parseArguments()).rejects.toThrow('process.exit called');
+    expect(mockWriteStderrLine).toHaveBeenCalledWith(
+      expect.stringContaining('Invalid --input-fd'),
+    );
+    mockExit.mockRestore();
+  });
+
+  it('should reject non-integer FD values', async () => {
+    process.argv = ['node', 'script.js', '--input-fd', '3.5'];
+    const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('process.exit called');
+    });
+    mockWriteStderrLine.mockClear();
+    await expect(parseArguments()).rejects.toThrow('process.exit called');
+    expect(mockWriteStderrLine).toHaveBeenCalledWith(
+      expect.stringContaining('Invalid --input-fd'),
+    );
+    mockExit.mockRestore();
+  });
+
+  it('should reject duplicate FD values', async () => {
+    process.argv = [
+      'node',
+      'script.js',
+      '--input-fd',
+      '3',
+      '--output-fd',
+      '3',
+    ];
+    const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('process.exit called');
+    });
+    mockWriteStderrLine.mockClear();
+    await expect(parseArguments()).rejects.toThrow('process.exit called');
+    expect(mockWriteStderrLine).toHaveBeenCalledWith(
+      expect.stringContaining('must be unique'),
+    );
+    mockExit.mockRestore();
+  });
+
+  it('should reject all duplicate FD values', async () => {
+    process.argv = [
+      'node',
+      'script.js',
+      '--input-fd',
+      '5',
+      '--output-fd',
+      '5',
+      '--error-fd',
+      '5',
+    ];
+    const mockExit = vi.spyOn(process, 'exit').mockImplementation(() => {
+      throw new Error('process.exit called');
+    });
+    mockWriteStderrLine.mockClear();
+    await expect(parseArguments()).rejects.toThrow('process.exit called');
+    expect(mockWriteStderrLine).toHaveBeenCalledWith(
+      expect.stringContaining('must be unique'),
+    );
+    mockExit.mockRestore();
+  });
+
+  it('should allow partial FD specification', async () => {
+    process.argv = ['node', 'script.js', '--output-fd', '4'];
+    const argv = await parseArguments();
+    expect(argv.inputFd).toBeUndefined();
+    expect(argv.outputFd).toBe(4);
+    expect(argv.errorFd).toBeUndefined();
+  });
+
+  it('should allow mixing default and custom FDs', async () => {
+    process.argv = [
+      'node',
+      'script.js',
+      '--input-fd',
+      '0',
+      '--output-fd',
+      '4',
+      '--error-fd',
+      '2',
+    ];
+    const argv = await parseArguments();
+    expect(argv.inputFd).toBe(0);
+    expect(argv.outputFd).toBe(4);
+    expect(argv.errorFd).toBe(2);
+  });
+});
+
 describe('parseArguments with positional prompt', () => {
   const originalArgv = process.argv;
 

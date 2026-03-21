@@ -295,8 +295,10 @@ export async function runNonInteractive(
               config.getContentGeneratorConfig()?.authType,
             );
             process.stderr.write(`${errorText}\n`);
-            // Throw error to exit with non-zero code
-            throw new Error(errorText);
+            // Throw error to exit with non-zero code, preserving context
+            const error = new Error(errorText);
+            error.cause = event.value.error; // Preserve original error for debugging
+            throw error;
           }
         }
 

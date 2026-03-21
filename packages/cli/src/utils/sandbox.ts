@@ -308,6 +308,13 @@ export async function start_sandbox(
       proxyProcess.stderr?.on('data', (data) => {
         writeStderrLine(data.toString());
       });
+      // Add error handlers to prevent unhandled stream errors
+      proxyProcess.stdout?.on('error', (err) => {
+        writeStderrLine(`Proxy output error: ${err.message}`);
+      });
+      proxyProcess.stderr?.on('error', (err) => {
+        writeStderrLine(`Proxy error output error: ${err.message}`);
+      });
       proxyProcess.on('close', (code, signal) => {
         if (sandboxProcess?.pid) {
           process.kill(-sandboxProcess.pid, 'SIGTERM');
@@ -806,6 +813,13 @@ export async function start_sandbox(
     // });
     proxyProcess.stderr?.on('data', (data) => {
       writeStderrLine(data.toString().trim());
+    });
+    // Add error handlers to prevent unhandled stream errors
+    proxyProcess.stdout?.on('error', (err) => {
+      writeStderrLine(`Proxy output error: ${err.message}`);
+    });
+    proxyProcess.stderr?.on('error', (err) => {
+      writeStderrLine(`Proxy error output error: ${err.message}`);
     });
     proxyProcess.on('close', (code, signal) => {
       if (sandboxProcess?.pid) {

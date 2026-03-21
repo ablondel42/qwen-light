@@ -201,8 +201,18 @@ export async function startInteractiveUI(
         handleAutoUpdate(info, settings, config.getProjectRoot());
       })
       .catch((err) => {
-        // Silently ignore update check errors.
-        debugLogger.warn(`Update check failed: ${err}`);
+        // Log update check failures with appropriate detail based on debug mode
+        if (isDebugMode) {
+          // In debug mode, log full error for debugging
+          debugLogger.warn(
+            `Update check failed: ${err instanceof Error ? err.stack : err}`,
+          );
+        } else {
+          // In production, log only message
+          debugLogger.warn(
+            `Update check failed: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
       });
   }
 

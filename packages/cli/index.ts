@@ -39,14 +39,14 @@ main().catch((error) => {
     if (!process.env['NO_COLOR']) {
       errorMessage = `\x1b[31m${errorMessage}\x1b[0m`;
     }
-    console.error(errorMessage);
+    writeStderrLine(errorMessage);
     process.exit(error.exitCode);
   }
-  console.error('An unexpected critical error occurred:');
+  writeStderrLine('An unexpected critical error occurred:');
   if (error instanceof Error) {
-    console.error(error.stack);
+    writeStderrLine(error.stack);
   } else {
-    console.error(String(error));
+    writeStderrLine(String(error));
   }
   process.exit(1);
 });

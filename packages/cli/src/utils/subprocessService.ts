@@ -7,6 +7,9 @@
 import { spawn, type ChildProcess, type StdioOptions } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { createDebugLogger } from '@qwen-code/qwen-code-core';
+
+const debugLogger = createDebugLogger('SUBPROCESS');
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const cliEntryPath = join(__dirname, '..', 'index.ts');
@@ -144,10 +147,10 @@ export async function spawnCliSubprocess(
       child.on('exit', (code, signal) => {
         resolve({ code, signal });
       });
-      
+
       child.on('error', (error) => {
-        // If the process errors, we still resolve with null
-        console.error('Subprocess error:', error.message);
+        // Log error message without exposing full error object (may contain sensitive paths)
+        debugLogger.error(`Subprocess error: ${error.message}`);
         resolve({ code: null, signal: null });
       });
     }

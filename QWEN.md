@@ -292,3 +292,6 @@ DEBUG=true npm run dev
 - Optional containerized execution
 - Configurable sandbox image
 - Tool execution isolation
+
+## Qwen Added Memories
+- Qwen Code project development rules: 1) Use ES Modules with .js extensions in relative imports, 2) TypeScript strict mode - no any types, pass typecheck, 3) File naming: PascalCase.tsx for components, camelCase.ts for utilities, *.test.ts for tests, 4) Import order: Node built-ins → externals → internal → types, 5) Error handling: use FatalInputError etc., log via writeStderrLine(), 6) FD management: never hardcode FD numbers, use os.open(), close in finally blocks, set QWEN_CODE_NO_RELAUNCH=true, 7) Testing: co-locate tests, use vitest, test success and error paths, 8) Build before commit: run npm run build and typecheck, 9) Keep CLAUDE.md under 200 lines, use .claude/rules/ for topics, 10) Subprocess safety: pass_fds for custom FDs, redirect stdin from /dev/null, cleanup in finally blocks

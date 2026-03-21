@@ -27,21 +27,31 @@ def main():
     
     prompt = sys.argv[1]
     session_id = str(uuid.uuid4())
-    
-    # Create temp file for output
-    output_path = tempfile.mktemp(suffix='.qwen-output')
-    
-    # Open output file and get a real FD from the OS
-    output_fd = os.open(output_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
-    
+
+    # Create temp file for output using mkstemp (atomic, no TOCTOU race)
+    output_fd, output_path = tempfile.mkstemp(suffix='.qwen-output')
+
     # Open /dev/null for stdin to force non-interactive mode
     null_fd = os.open('/dev/null', os.O_RDONLY)
-    
+
+    # Validate FDs don't conflict with standard streams (0, 1, 2)
+    # If os.open() returns 0, 1, or 2, remap to a safe FD
+    if output_fd < 3:
+        # Duplicate to a safe FD and close the original
+        new_fd = os.dup(output_fd)
+        os.close(output_fd)
+        output_fd = new_fd
+
+    if null_fd < 3:
+        new_fd = os.dup(null_fd)
+        os.close(null_fd)
+        null_fd = new_fd
+
     try:
         print(f"Session ID: {session_id}", file=sys.stderr)
         print(f"Using FDs: stdin={null_fd}, output={output_fd}", file=sys.stderr)
         print(f"Running CLI with prompt: {prompt}", file=sys.stderr)
-        
+
         # Build command
         cmd = [
             'node', '-r', 'tsx/esm', 'packages/cli/index.ts',
@@ -49,11 +59,11 @@ def main():
             '--session-id', session_id,
             '--prompt', prompt,
         ]
-        
+
         # Set environment - disable relaunch to prevent EBADF with custom FDs
         env = os.environ.copy()
         env['QWEN_CODE_NO_RELAUNCH'] = 'true'
-        
+
         # Spawn CLI subprocess
         # pass_fds ensures output_fd is inherited by the child process
         # stdin=null_fd forces non-interactive mode
@@ -66,12 +76,12 @@ def main():
             cwd=os.path.dirname(os.path.abspath(__file__)),
             env=env,
         )
-        
-        # Wait for completion
+
+        # Wait for completion BEFORE closing FDs (fix race condition)
         exit_code = proc.wait()
         print(f"CLI exited with code: {exit_code}", file=sys.stderr)
-        
-        # Close FDs before reading
+
+        # Close FDs AFTER child process exits
         os.close(output_fd)
         os.close(null_fd)
         
@@ -100,18 +110,18 @@ def main():
         # Cleanup FDs (might already be closed)
         try:
             os.close(output_fd)
-        except OSError:
-            pass
+        except OSError as e:
+            print(f"Warning: Failed to close output_fd: {e}", file=sys.stderr)
         try:
             os.close(null_fd)
-        except OSError:
-            pass
-        
+        except OSError as e:
+            print(f"Warning: Failed to close null_fd: {e}", file=sys.stderr)
+
         # Cleanup temp files
         try:
             os.unlink(output_path)
-        except OSError:
-            pass
+        except OSError as e:
+            print(f"Warning: Failed to unlink output_path: {e}", file=sys.stderr)
         
         print("Cleanup complete.", file=sys.stderr)
 

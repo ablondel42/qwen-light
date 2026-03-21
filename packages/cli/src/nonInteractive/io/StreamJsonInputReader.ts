@@ -7,6 +7,7 @@
 import { createInterface } from 'node:readline/promises';
 import type { Readable } from 'node:stream';
 import process from 'node:process';
+import { createDebugLogger } from '@qwen-code/qwen-code-core';
 import type {
   CLIControlRequest,
   CLIControlResponse,
@@ -17,6 +18,8 @@ import {
   getFileDescriptorService,
   isFileDescriptorServiceInitialized,
 } from '../../utils/fileDescriptorService.js';
+
+const debugLogger = createDebugLogger('STREAM_JSON_INPUT');
 
 export type StreamJsonInputMessage =
   | CLIMessage
@@ -56,8 +59,20 @@ export class StreamJsonInputReader {
 
         yield this.parse(line);
       }
+    } catch (error) {
+      // Handle stream errors or parse errors during iteration
+      if (error instanceof StreamJsonParseError) {
+        throw error;
+      }
+      const reason = error instanceof Error ? error.message : String(error);
+      throw new StreamJsonParseError(`Stream error: ${reason}`);
     } finally {
-      rl.close();
+      try {
+        rl.close();
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        debugLogger.warn(`Failed to close readline interface: ${errorMsg}`);
+      }
     }
   }
 

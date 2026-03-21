@@ -598,6 +598,27 @@ export async function parseArguments(): Promise<CliArgs> {
           if (argv['resume'] && !isValidSessionId(argv['resume'] as string)) {
             return `Invalid --resume: "${argv['resume']}". Must be a valid UUID (e.g., "123e4567-e89b-12d3-a456-426614174000").`;
           }
+
+          // Validate file descriptor arguments
+          const fdArgs = [
+            { name: 'input-fd', value: argv['inputFd'] },
+            { name: 'output-fd', value: argv['outputFd'] },
+            { name: 'error-fd', value: argv['errorFd'] },
+          ];
+          const definedFds = fdArgs.filter((f): f is typeof f & { value: number } => f.value !== undefined);
+
+          for (const { name, value } of definedFds) {
+            if (!Number.isInteger(value) || value < 0 || value > 1024) {
+              return `Invalid --${name}: ${value}. Must be an integer between 0 and 1024.`;
+            }
+          }
+
+          // Check for duplicate FDs
+          const fdValues = definedFds.map(f => f.value);
+          if (new Set(fdValues).size !== fdValues.length) {
+            return 'File descriptors (--input-fd, --output-fd, --error-fd) must be unique.';
+          }
+
           return true;
         }),
     )

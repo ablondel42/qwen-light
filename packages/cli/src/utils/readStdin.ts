@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { Readable } from 'node:stream';
 import { writeStderrLine } from './stdioHelpers.js';
 import {
   getFileDescriptorService,
@@ -42,7 +43,7 @@ export async function readStdin(): Promise<string> {
             writeStderrLine(
               `Warning: stdin input truncated to ${MAX_STDIN_SIZE} bytes.`,
             );
-            if (inputStream instanceof require('node:stream').Readable) {
+            if (inputStream instanceof Readable) {
               inputStream.destroy();
             }
             break;
