@@ -84,6 +84,8 @@ def main():
         # Close FDs AFTER child process exits
         os.close(output_fd)
         os.close(null_fd)
+        output_fd = None  # Mark as closed to avoid double-close
+        null_fd = None    # Mark as closed to avoid double-close
         
         # Read output
         try:
@@ -107,22 +109,24 @@ def main():
         print(f"Error: {e}", file=sys.stderr)
         raise
     finally:
-        # Cleanup FDs (might already be closed)
-        try:
-            os.close(output_fd)
-        except OSError as e:
-            print(f"Warning: Failed to close output_fd: {e}", file=sys.stderr)
-        try:
-            os.close(null_fd)
-        except OSError as e:
-            print(f"Warning: Failed to close null_fd: {e}", file=sys.stderr)
+        # Cleanup FDs (only if not already closed)
+        if output_fd is not None:
+            try:
+                os.close(output_fd)
+            except OSError as e:
+                print(f"Warning: Failed to close output_fd: {e}", file=sys.stderr)
+        if null_fd is not None:
+            try:
+                os.close(null_fd)
+            except OSError as e:
+                print(f"Warning: Failed to close null_fd: {e}", file=sys.stderr)
 
         # Cleanup temp files
         try:
             os.unlink(output_path)
         except OSError as e:
             print(f"Warning: Failed to unlink output_path: {e}", file=sys.stderr)
-        
+
         print("Cleanup complete.", file=sys.stderr)
 
 
