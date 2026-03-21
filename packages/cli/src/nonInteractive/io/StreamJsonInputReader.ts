@@ -13,6 +13,10 @@ import type {
   CLIMessage,
   ControlCancelRequest,
 } from '../types.js';
+import {
+  getFileDescriptorService,
+  isFileDescriptorServiceInitialized,
+} from '../../utils/fileDescriptorService.js';
 
 export type StreamJsonInputMessage =
   | CLIMessage
@@ -25,8 +29,15 @@ export class StreamJsonParseError extends Error {}
 export class StreamJsonInputReader {
   private readonly input: Readable;
 
-  constructor(input: Readable = process.stdin) {
-    this.input = input;
+  constructor(input?: Readable) {
+    // Use custom FD service if initialized, otherwise use provided input or default to process.stdin
+    if (input) {
+      this.input = input;
+    } else if (isFileDescriptorServiceInitialized()) {
+      this.input = getFileDescriptorService().getInputStream();
+    } else {
+      this.input = process.stdin;
+    }
   }
 
   async *read(): AsyncGenerator<StreamJsonInputMessage> {

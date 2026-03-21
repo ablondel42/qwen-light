@@ -161,6 +161,12 @@ export interface CliArgs {
   excludeTools: string[] | undefined;
   authType: string | undefined;
   channel: string | undefined;
+  /** Custom input file descriptor (default: 0/stdin) */
+  inputFd: number | undefined;
+  /** Custom output file descriptor (default: 1/stdout) */
+  outputFd: number | undefined;
+  /** Custom error file descriptor (default: 2/stderr) */
+  errorFd: number | undefined;
 }
 
 function normalizeOutputFormat(
@@ -458,6 +464,18 @@ export async function parseArguments(): Promise<CliArgs> {
           type: 'string',
           description: 'The format of the CLI output.',
           choices: ['text', 'json', 'stream-json'],
+        })
+        .option('input-fd', {
+          type: 'number',
+          description: 'Custom input file descriptor (default: 0/stdin)',
+        })
+        .option('output-fd', {
+          type: 'number',
+          description: 'Custom output file descriptor (default: 1/stdout)',
+        })
+        .option('error-fd', {
+          type: 'number',
+          description: 'Custom error file descriptor (default: 2/stderr)',
         })
         .option('include-partial-messages', {
           type: 'boolean',

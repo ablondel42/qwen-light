@@ -3,7 +3,7 @@
   "compilerOptions": {
     "outDir": "dist",
     "lib": ["DOM", "DOM.Iterable", "ES2023"],
-    "composite": false,
+    "composite": true,
     "types": ["node"],
     "skipLibCheck": true,
     "noEmit": false

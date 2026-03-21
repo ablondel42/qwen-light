@@ -26,6 +26,10 @@ import {
   type ResultOptions,
   type JsonOutputAdapterInterface,
 } from './BaseJsonOutputAdapter.js';
+import {
+  getFileDescriptorService,
+  isFileDescriptorServiceInitialized,
+} from '../../utils/fileDescriptorService.js';
 
 /**
  * Stream JSON output adapter that emits messages immediately
@@ -60,7 +64,12 @@ export class StreamJsonOutputAdapter
     }
 
     // Emit messages immediately in stream mode
-    process.stdout.write(`${JSON.stringify(message)}\n`);
+    const output = `${JSON.stringify(message)}\n`;
+    if (isFileDescriptorServiceInitialized()) {
+      getFileDescriptorService().writeOutput(output);
+    } else {
+      process.stdout.write(output);
+    }
   }
 
   /**

@@ -60,16 +60,45 @@ node dist/cli.js --version     # Show version
 
 ## CLI Options
 
-```
+```bash
 -p, --prompt           Prompt for non-interactive mode
 -m, --model            Model to use (default: qwen3-coder-plus)
 --output-format        Output format: text, json, stream-json
---input-fd             Custom input file descriptor
---output-fd            Custom output file descriptor
---error-fd             Custom error file descriptor
+--input-fd             Custom input file descriptor (default: 0/stdin)
+--output-fd            Custom output file descriptor (default: 1/stdout)
+--error-fd             Custom error file descriptor (default: 2/stderr)
 --approval-mode        Approval mode: plan, default, auto-edit, yolo
 --sandbox              Run in sandbox mode
 ```
+
+## File Descriptor Redirection
+
+The CLI supports reading from and writing to arbitrary file descriptors, enabling integration with other processes and tools:
+
+```bash
+# Use custom file descriptors for input/output
+qwen --input-fd 3 --output-fd 4 --error-fd 5 -p "hello"
+
+# Spawn CLI as subprocess with FD redirection
+node -e "
+  const { spawn } = require('child_process');
+  const { pipe } = require('fs');
+  
+  // Create pipes for FD redirection
+  const [readFd, writeFd] = pipe();
+  
+  // Spawn CLI with custom FDs
+  const child = spawn('qwen', ['--input-fd', '3', '--output-fd', '4', '-p', 'hello'], {
+    stdio: ['ignore', 'ignore', 'ignore', readFd, 4, 5],
+  });
+"
+```
+
+This is particularly useful for:
+- Embedding the CLI in other applications
+- Creating custom UIs around the CLI
+- Integrating with IDE extensions
+- Building testing harnesses
 
 ## Project Structure
 

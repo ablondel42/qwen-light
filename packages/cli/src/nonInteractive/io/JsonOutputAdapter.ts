@@ -11,6 +11,10 @@ import {
   type JsonOutputAdapterInterface,
   type ResultOptions,
 } from './BaseJsonOutputAdapter.js';
+import {
+  getFileDescriptorService,
+  isFileDescriptorServiceInitialized,
+} from '../../utils/fileDescriptorService.js';
 
 /**
  * JSON output adapter that collects all messages and emits them
@@ -59,22 +63,47 @@ export class JsonOutputAdapter
   }
 
   emitResult(options: ResultOptions): void {
+    console.error('[JsonOutputAdapter.emitResult] Called');
     const resultMessage = this.buildResultMessage(
       options,
       this.lastAssistantMessage,
     );
     this.messages.push(resultMessage);
+    console.error(`[JsonOutputAdapter.emitResult] resultMessage.is_error=${resultMessage.is_error}, result="${resultMessage.result?.substring(0, 100)}..."`);
 
     if (this.config.getOutputFormat() === 'text') {
-      if (resultMessage.is_error) {
-        process.stderr.write(`${resultMessage.error?.message || ''}`);
+      const output = resultMessage.is_error
+        ? `${resultMessage.error?.message || ''}`
+        : `${resultMessage.result}`;
+      console.error(`[JsonOutputAdapter.emitResult] Writing output: "${output.substring(0, 100)}..."`);
+      console.error(`[JsonOutputAdapter.emitResult] FD service initialized: ${isFileDescriptorServiceInitialized()}`);
+
+      if (isFileDescriptorServiceInitialized()) {
+        const fdService = getFileDescriptorService();
+        console.error(`[JsonOutputAdapter.emitResult] FD service outputFd=${fdService.getOutputFd()}`);
+        if (resultMessage.is_error) {
+          fdService.writeError(output);
+        } else {
+          fdService.writeOutput(output);
+        }
+        console.error('[JsonOutputAdapter.emitResult] writeOutput called');
       } else {
-        process.stdout.write(`${resultMessage.result}`);
+        if (resultMessage.is_error) {
+          process.stderr.write(output);
+        } else {
+          process.stdout.write(output);
+        }
       }
     } else {
       // Emit the entire messages array as JSON (includes all main agent + subagent messages)
       const json = JSON.stringify(this.messages);
-      process.stdout.write(`${json}\n`);
+      const output = `${json}\n`;
+      
+      if (isFileDescriptorServiceInitialized()) {
+        getFileDescriptorService().writeOutput(output);
+      } else {
+        process.stdout.write(output);
+      }
     }
   }
 

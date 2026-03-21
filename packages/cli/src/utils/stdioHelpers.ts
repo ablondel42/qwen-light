@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import {
+  getFileDescriptorService,
+  isFileDescriptorServiceInitialized,
+} from './fileDescriptorService.js';
+
 /**
  * Utility functions for writing to stdout/stderr in CLI commands.
  *
@@ -20,7 +25,12 @@
  * Avoids double newlines if the message already ends with one.
  */
 export const writeStdoutLine = (message: string): void => {
-  process.stdout.write(message.endsWith('\n') ? message : `${message}\n`);
+  const output = message.endsWith('\n') ? message : `${message}\n`;
+  if (isFileDescriptorServiceInitialized()) {
+    getFileDescriptorService().writeOutput(output);
+  } else {
+    process.stdout.write(output);
+  }
 };
 
 /**
@@ -29,7 +39,12 @@ export const writeStdoutLine = (message: string): void => {
  * Avoids double newlines if the message already ends with one.
  */
 export const writeStderrLine = (message: string): void => {
-  process.stderr.write(message.endsWith('\n') ? message : `${message}\n`);
+  const output = message.endsWith('\n') ? message : `${message}\n`;
+  if (isFileDescriptorServiceInitialized()) {
+    getFileDescriptorService().writeError(output);
+  } else {
+    process.stderr.write(output);
+  }
 };
 
 /**

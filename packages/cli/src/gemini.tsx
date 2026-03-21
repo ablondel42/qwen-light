@@ -348,6 +348,25 @@ export async function main() {
   // We are now past the logic handling potentially launching a child process
   // to run Qwen Code. It is now safe to perform expensive initialization that
   // may have side effects.
+  console.error(`[STARTUP DEBUG] Past relaunch logic. argv.inputFd=${argv.inputFd}, argv.outputFd=${argv.outputFd}, argv.errorFd=${argv.errorFd}`);
+
+  // Initialize file descriptor service if custom FDs are specified
+  if (
+    argv.inputFd !== undefined ||
+    argv.outputFd !== undefined ||
+    argv.errorFd !== undefined
+  ) {
+    console.error(`[FD SERVICE] Initializing with input=${argv.inputFd}, output=${argv.outputFd}, error=${argv.errorFd}`);
+    const { initializeFileDescriptorService } = await import(
+      './utils/fileDescriptorService.js'
+    );
+    initializeFileDescriptorService(
+      argv.inputFd ?? 0,
+      argv.outputFd ?? 1,
+      argv.errorFd ?? 2,
+    );
+    console.error('[FD SERVICE] Initialized successfully');
+  }
 
   // Initialize output language file before config loads to ensure it's included in context
   initializeLlmOutputLanguage(settings.merged.general?.outputLanguage);
@@ -452,6 +471,8 @@ export async function main() {
       }
     }
 
+    console.error(`[DEBUG] inputFormat=${inputFormat}, process.stdin.isTTY=${process.stdin.isTTY}, input="${input}"`);
+
     // For non-stream-json mode, initialize config here
     if (inputFormat !== InputFormat.STREAM_JSON) {
       await config.initialize();
@@ -461,10 +482,12 @@ export async function main() {
     // In stream-json mode, stdin is used for protocol messages (control requests, etc.)
     // and should be consumed by StreamJsonInputReader instead
     if (inputFormat !== InputFormat.STREAM_JSON && !process.stdin.isTTY) {
+      console.error('[DEBUG] Reading stdin...');
       const stdinData = await readStdin();
       if (stdinData) {
         input = `${stdinData}\n\n${input}`;
       }
+      console.error(`[DEBUG] stdinData="${stdinData}", input="${input}"`);
     }
 
     const nonInteractiveConfig = await validateNonInteractiveAuth(
@@ -474,6 +497,7 @@ export async function main() {
     );
 
     const prompt_id = Math.random().toString(16).slice(2);
+    console.error(`[DEBUG] After validateNonInteractiveAuth, input="${input}"`);
 
     if (inputFormat === InputFormat.STREAM_JSON) {
       const trimmedInput = (input ?? '').trim();
@@ -487,11 +511,13 @@ export async function main() {
     }
 
     if (!input) {
+      console.error('[DEBUG] No input, writing error message');
       writeStderrLine(
         `No input provided via stdin. Input can be provided by piping data into gemini or using the --prompt option.`,
       );
       process.exit(1);
     }
+    console.error(`[DEBUG] Input exists, calling runNonInteractive`);
 
     logUserPrompt(config, {
       'event.name': 'user_prompt',

@@ -51,8 +51,20 @@ export async function relaunchAppInChildProcess(
     // The parent process should not be reading from stdin while the child is running.
     process.stdin.pause();
 
+    // Build stdio array to pass through additional file descriptors
+    // Start with stdin, stdout, stderr, then add any additional FDs (3, 4, 5, ...)
+    const stdio: Array<'inherit' | 'pipe' | 'ignore' | number> = [
+      'inherit', // stdin (0)
+      'inherit', // stdout (1)
+      'inherit', // stderr (2)
+    ];
+    // Add additional FDs (3, 4, 5, ...) - these will be inherited from parent
+    for (let fd = 3; fd <= 10; fd++) {
+      stdio.push(fd);
+    }
+
     const child = spawn(process.execPath, nodeArgs, {
-      stdio: 'inherit',
+      stdio,
       env: newEnv,
     });
 
